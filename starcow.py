@@ -31,6 +31,7 @@ def send_to_discord(product_name, product_price, image_url, product_link):
 
 
 url = "https://www.starcowparis.com/en/search?q=dunk+low&options%5Bprefix%5D=last&type=product"
+
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.82 Safari/537.36"
 }
