@@ -5,17 +5,15 @@ from datetime import datetime
 
 # Insérez vos URLs d'API ici
 API_URLs = [
-    'https://tickets.compagnie-oceane.fr/ws/?&func=liste_horaires&num_voyage=0&num_passage=1&server_celya=webb-ha1&_=1688483324811',
-    'https://tickets.compagnie-oceane.fr/ws/?&func=liste_horaires&num_voyage=0&num_passage=1&server_celya=webb-ha3&_=1688483325475',
-    'https://tickets.compagnie-oceane.fr/ws/?&func=liste_horaires&num_voyage=0&num_passage=1&server_celya=webb-ha3&_=1688483325493',
-    'https://tickets.compagnie-oceane.fr/ws/?&func=liste_horaires&num_voyage=0&num_passage=1&server_celya=webb-ha3&_=1688483325501'
+    "https://tickets.compagnie-oceane.fr/ws/?&func=liste_horaires&num_voyage=0&num_passage=0&server_celya=webb-ha3&_=1688500745807",
+    "https://tickets.compagnie-oceane.fr/ws/?&func=liste_horaires&num_voyage=0&num_passage=0&server_celya=webb-ha3&_=1688500745829"
 ]
 
 # Insérez votre URL de webhook Discord ici
 WEBHOOK_URL = 'https://discord.com/api/webhooks/1125808344758747237/2OsjYw2sla1S3I_u7DadCSNeZRZmtzP-qzOXm8cP2r3fy4QKnQ-xGht8ANvxv7R03W7X'
 
-# Stocke l'état actuel des places disponibles
-current_state = {}
+# Stocke l'état actuel des places disponibles pour chaque URL
+current_state = {url: {} for url in API_URLs}
 
 # Cookies
 cookies = {
@@ -30,8 +28,8 @@ cookies = {
 first_run = True
 
 while True:
-    for API_URL in API_URLs:
-        print("Interrogation de l'API...")
+    for API_URL in API_URLS:
+        print(f"Interrogation de l'API {API_URL}...")
         response = requests.get(API_URL, cookies=cookies)
         data = response.json()
 
@@ -44,23 +42,23 @@ while True:
 
             print(f"Analyse de la traversée {unique_key}...")
 
-            if unique_key not in current_state:
+            if unique_key not in current_state[API_URL]:
                 # C'est la première fois que nous voyons cette croisière, donc nous l'ajoutons à notre état actuel
-                current_state[unique_key] = places_dispos
+                current_state[API_URL][unique_key] = places_dispos
                 print(f"Première observation de la traversée {unique_key}. Nombre de places disponibles: {places_dispos}")
             else:
                 # Nous avons déjà vu cette croisière, alors vérifions si le nombre de places a changé
-                old_places_dispos = current_state[unique_key]
+                old_places_dispos = current_state[API_URL][unique_key]
 
                 if old_places_dispos != places_dispos and not first_run:
                     # Le nombre de places a changé, donc nous envoyons un webhook à Discord
                     discord_data = {
                         'embeds': [{
                             'title': "Des places viennent de se vendre",
-                            'color': 16711935,
+                            'color': 16711680,  # Couleur rouge
                             'fields': [
                                 {'name': 'Date', 'value': date_depart, 'inline': False},
-                                {'name': 'Horaire', 'value': heure_depart, 'inline': False},
+                                {'name': 'Heure', 'value': heure_depart, 'inline': False},
                                 {'name': 'Nombre de places disponibles avant', 'value': str(old_places_dispos), 'inline': True},
                                 {'name': 'Nombre de places disponibles désormais', 'value': str(places_dispos), 'inline': True}
                             ],
@@ -71,9 +69,9 @@ while True:
                     requests.post(WEBHOOK_URL, json=discord_data)
 
                     # Met à jour l'état actuel avec le nouveau nombre de places
-                    current_state[unique_key] = places_dispos
+                    current_state[API_URL][unique_key] = places_dispos
 
-        # Mark first_run as False after the initial state recording
+        # Marquer first_run comme False après l'enregistrement de l'état initial
         first_run = False
 
         # Attend 60 secondes avant de vérifier à nouveau
