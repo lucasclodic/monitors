@@ -20,5 +20,5 @@ for product_item in products_items:
         product_price = product_item.find("span", class_="price-wrapper")
         product_link = product_item.find("a")
 
-print(found_products)
+
 
