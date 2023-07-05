@@ -1,49 +1,64 @@
-import time
-import requests
 from bs4 import BeautifulSoup
-from dhooks import Webhook, Embed
+import requests
+from discord_webhook import DiscordWebhook, DiscordEmbed
+import schedule
+import time
 
-HOOK_URL = 'https://discord.com/api/webhooks/1124627340681551902/QM1T_hoo_Ta73VJOuBk57_cfNscB5bTyVIMThM6uHRAeb9hl_j7xR5aUfjys1AOK2FAt'
-SITE_URL = 'https://www.apc.fr/soldes-30/men-sales/t-shirts-jeans.html'
+# URL du site que vous souhaitez surveiller
+url = "https://www.apc.fr/soldes-30/men-sales/t-shirts-jeans.html"
 
-def fetch_promotions():
-    page = requests.get(SITE_URL)
-    soup = BeautifulSoup(page.content, 'html.parser')
+# Le webhook Discord où vous souhaitez recevoir les messages
+webhook_url = "https://discord.com/api/webhooks/1126229152270385192/iJ0evNqi7iKOqiUmdacRGYimmckhaqNadmTll2VWm33v7l6fXgryePMkaMprossrC6SH"
 
-    ul = soup.find('ul', class_='product-list')
-    items = ul.find_all('li', class_='product-item')
+# Stockage des produits déjà vus
+produits_vus = set()
 
-    promotions = []
-    for item in items:
-        promotion = {
-            'link': item.find('a')['href'],
-            'image': item.find('img', class_='product-image entered loaded exited')['src'],
-            'name': item.find('span', class_='product-item-details').find('span', class_='product-name').text
-        }
-        promotions.append(promotion)
+def verifier_nouveaux_produits(initialisation=False):
+    print("Vérification des nouveaux produits...")
 
-    return promotions
+    # Faire une requête GET au site
+    response = requests.get(url)
+    
+    # Analyser le HTML de la page
+    soup = BeautifulSoup(response.text, 'html.parser')
+    
+    # Trouver tous les éléments de produit sur la page
+    produits = soup.find_all('li', {'class': 'product-item'})
+    
+    for produit in produits:
+        # Récupérer les détails du produit
+        nom = produit.find('span', {'class': 'product-name'}).text
+        lien = produit.find('a', {'class': 'product-link'}).get('href')
+        prix_avant_promo = produit.find('span', {'data-price-type': 'oldPrice'}).get('data-price-amount')
+        prix_apres_promo = produit.find('span', {'data-price-type': 'finalPrice'}).get('data-price-amount')
+        image = produit.find('img', {'class': 'product-image'}).get('data-src')
+        
+        # Si le produit n'a pas été vu auparavant, le notifier à Discord
+        if nom not in produits_vus:
+            produits_vus.add(nom)
 
-def send_to_discord(promotion):
-    hook = Webhook(HOOK_URL)
-    embed = Embed(
-        description=f"[{promotion['name']}]({promotion['link']})",
-        color=0x5CDBF0,
-        timestamp='now'  
-    )
-    embed.set_image(promotion['image'])
-    hook.send(embed=embed)
+            if not initialisation:
+                print(f"Nouveau produit détecté : {nom}")
 
-def main():
-    seen_promotions = set()
-    while True:
-        promotions = fetch_promotions()
-        for promotion in promotions:
-            link = promotion['link']
-            if link not in seen_promotions:
-                send_to_discord(promotion)
-                seen_promotions.add(link)
-        time.sleep(60)  # Pause for 1 minute
+                # Créer un embed Discord avec les détails du produit
+                embed = DiscordEmbed(title=nom, description=f"Prix avant promo : {prix_avant_promo}€\nPrix après promo : {prix_apres_promo}€", color=242424, url=lien)
+                embed.set_image(url=image)
+                
+                # Envoyer le message à Discord
+                webhook = DiscordWebhook(url=webhook_url)
+                webhook.add_embed(embed)
+                webhook.execute()
+            else:
+                print(f"Produit ajouté à la liste initiale : {nom}")
 
-if __name__ == "__main__":
-    main()
+print("Initialisation de la liste de produits...")
+verifier_nouveaux_produits(initialisation=True)
+
+print("Initialisation terminée. Commencement des vérifications régulières.")
+
+# Ensuite, exécuter la fonction toutes les 10 minutes
+schedule.every(5).minutes.do(verifier_nouveaux_produits)
+
+while True:
+    schedule.run_pending()
+    time.sleep(1)
