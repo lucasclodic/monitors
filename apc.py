@@ -4,11 +4,11 @@ from discord_webhook import DiscordWebhook, DiscordEmbed
 import schedule
 import time
 
-# URL du site que vous souhaitez surveiller
-url = "https://www.apc.fr/soldes-30/men-sales/t-shirts-jeans.html"
+# Demander à l'utilisateur l'URL du site qu'il souhaite surveiller
+url = input("Veuillez entrer l'URL du site à surveiller : ")
 
-# Le webhook Discord où vous souhaitez recevoir les messages
-webhook_url = "https://discord.com/api/webhooks/1126229152270385192/iJ0evNqi7iKOqiUmdacRGYimmckhaqNadmTll2VWm33v7l6fXgryePMkaMprossrC6SH"
+# Demander à l'utilisateur le webhook Discord où il souhaite recevoir les messages
+webhook_url = input("Veuillez entrer l'URL de votre webhook Discord : ")
 
 # Stockage des produits déjà vus
 produits_vus = set()
@@ -57,7 +57,7 @@ verifier_nouveaux_produits(initialisation=True)
 print("Initialisation terminée. Commencement des vérifications régulières.")
 
 # Ensuite, exécuter la fonction toutes les 10 minutes
-schedule.every(5).minutes.do(verifier_nouveaux_produits)
+schedule.every(10).minutes.do(verifier_nouveaux_produits)
 
 while True:
     schedule.run_pending()
